@@ -1,0 +1,129 @@
+
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>큰 글자 음성 인식기</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            background-color: #121212;
+            color: #ffffff;
+            font-family: 'Malgun Gothic', sans-serif;
+            overflow: hidden;
+        }
+        #text-display {
+            font-size: 8vw; /* 화면 크기에 비례하는 큰 글자 */
+            font-weight: bold;
+            text-align: center;
+            padding: 20px;
+            word-break: keep-all;
+            line-height: 1.4;
+        }
+        .interim-text {
+            color: #aaaaaa; /* 인식 중인 텍스트는 회색으로 표시 */
+        }
+        #controls {
+            position: absolute;
+            bottom: 40px;
+        }
+        button {
+            padding: 15px 30px;
+            font-size: 1.5rem;
+            font-weight: bold;
+            cursor: pointer;
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            transition: background-color 0.3s;
+        }
+        button:disabled {
+            background-color: #555555;
+            cursor: not-allowed;
+        }
+        button.recording {
+            background-color: #DC3545;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="text-display">이곳에 음성이 큰 글자로 표시됩니다.</div>
+    
+    <div id="controls">
+        <button id="start-btn">마이크 켜기</button>
+    </div>
+
+    <script>
+        const textDisplay = document.getElementById('text-display');
+        const startBtn = document.getElementById('start-btn');
+
+        // Web Speech API 객체 초기화 (크롬 및 기타 브라우저 지원)
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+        if (!SpeechRecognition) {
+            textDisplay.textContent = "이 브라우저는 음성 인식을 지원하지 않습니다.";
+            startBtn.disabled = true;
+        } else {
+            const recognition = new SpeechRecognition();
+            
+            // 인식 설정
+            recognition.lang = 'ko-KR';
+            recognition.interimResults = true; // 말하는 도중에도 결과를 반환
+            recognition.continuous = true;     // 끊기지 않고 계속 인식
+
+            let finalTranscript = '';
+
+            // 음성 인식 결과 처리
+            recognition.onresult = (event) => {
+                let interimTranscript = '';
+
+                for (let i = event.resultIndex; i < event.results.length; ++i) {
+                    if (event.results[i].isFinal) {
+                        // 최종 인식된 문장 덮어쓰기 (화면을 깔끔하게 유지하기 위해 이전 문장 초기화)
+                        finalTranscript = event.results[i][0].transcript;
+                    } else {
+                        // 인식 진행 중인 문장
+                        interimTranscript += event.results[i][0].transcript;
+                    }
+                }
+
+                // 화면에 출력 (최종 텍스트 + 진행 중인 텍스트)
+                textDisplay.innerHTML = finalTranscript + '<span class="interim-text">' + interimTranscript + '</span>';
+            };
+
+            // 에러 처리
+            recognition.onerror = (event) => {
+                console.error("음성 인식 오류:", event.error);
+                if(event.error === 'not-allowed') {
+                    textDisplay.textContent = "마이크 사용 권한이 필요합니다.";
+                }
+            };
+
+            // 버튼 클릭 이벤트 제어
+            startBtn.addEventListener('click', () => {
+                if (startBtn.classList.contains('recording')) {
+                    recognition.stop();
+                    startBtn.textContent = "마이크 켜기";
+                    startBtn.classList.remove('recording');
+                } else {
+                    finalTranscript = '';
+                    textDisplay.textContent = "듣는 중...";
+                    recognition.start();
+                    startBtn.textContent = "마이크 끄기";
+                    startBtn.classList.add('recording');
+                }
+            });
+        }
+    </script>
+</body>
+</html>
